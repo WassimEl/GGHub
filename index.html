@@ -197,7 +197,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   <div id="pEnt" role="tabpanel" aria-labelledby="tabEnt" hidden>
     <section class="cat" aria-labelledby="eTitle">
       <div class="cat-head"><h2 id="eTitle">Entretien des PC<span class="n" id="eN">0</span></h2></div>
-      <p class="h" style="margin:0 0 8px">Un rappel apparaît 6 mois après la commande, puis 6 mois après chaque entretien. Il s'affiche en haut du hub à chaque ouverture.</p>
+      <p class="h" style="margin:0 0 8px">Une pastille orange apparaît après 6 mois (sans notification). À 1 an, la pastille passe au rouge et un rappel s'affiche en haut du hub à chaque ouverture. Le compte repart après chaque entretien.</p>
       <form id="eForm" class="eform">
         <input id="eName" placeholder="Client" aria-label="Nom du client" maxlength="60" required>
         <input id="ePc" placeholder="PC (ex. gaming RTX 5060)" aria-label="PC" maxlength="80">
@@ -515,8 +515,8 @@ function monthsS(a,b){var m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.
 function fmtD(d){return d.toLocaleDateString("fr-BE")}
 function mois(n){return n<1?"moins d'un mois":n+" mois"}
 function eInfo(it){
-  var t=todayD(),o=pd(it.order),l=it.last?pd(it.last):null,due=addM(l||o,6),days=Math.round((due-t)/864e5);
-  return{o:o,l:l,due:due,days:days,st:days<=0?"due":(days<=30?"soon":"ok"),m:monthsS(o,t)};
+  var t=todayD(),o=pd(it.order),l=it.last?pd(it.last):null,base=l||o,due=addM(base,12),days=Math.round((due-t)/864e5),mb=monthsS(base,t);
+  return{o:o,l:l,due:due,days:days,st:days<=0?"due":(mb>=6?"soon":"ok"),m:monthsS(o,t),mb:mb};
 }
 function updateE(){
   var due=ENT.filter(function(x){return eInfo(x).st==="due"});
@@ -552,11 +552,11 @@ function renderEnt(){
     var f=eInfo(it),li=el("li","erow");
     var c1=el("div","ec");c1.append(el("b",null,it.client),el("span","h",it.pc||"PC non précisé"));
     var c2=el("div","ec");
-    var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?"Dans "+f.days+" j":"À jour");
+    var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?f.mb+" mois écoulés":"À jour");
     var badge=el("span","eb "+f.st,label);
     c2.append(el("b",null,"Commandé il y a "+mois(f.m)),el("span","h","le "+fmtD(f.o)+" · dernier entretien : "+(f.l?fmtD(f.l):"jamais")),el("span","h","Prochain entretien : "+fmtD(f.due)),badge);
     var done=el("button","primary","Entretien fait");done.type="button";
-    done.onclick=function(){it.last=isoD(todayD());saveE();eMsg("Entretien noté pour "+it.client+". Prochain rappel dans 6 mois.");renderEnt()};
+    done.onclick=function(){it.last=isoD(todayD());saveE();eMsg("Entretien noté pour "+it.client+". Prochain rappel dans 1 an.");renderEnt()};
     var ed=el("button","ghost edit","Modifier");ed.type="button";ed.onclick=function(){eEdit=it.id;eMsg("");renderEnt()};
     var rm=el("button","ghost","Retirer");rm.type="button";
     arm(rm,"Confirmer",function(){ENT=ENT.filter(function(x){return x.id!==it.id});saveE();renderEnt()});
