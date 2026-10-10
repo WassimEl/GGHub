@@ -93,7 +93,9 @@ li.erow.eedit{grid-template-columns:minmax(0,1fr) auto}
 .eact{display:flex;flex-direction:column;gap:4px;align-items:stretch}
 .egrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fl{display:flex;flex-direction:column;gap:2px}
-.eform{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
+.eform{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1.2fr) minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
+.sheetlink{font-weight:600;font-size:.9rem;color:var(--accent);text-decoration:none;padding:6px 9px;border-radius:8px}
+.sheetlink:hover{background:var(--bg)}
 @media (max-width:700px){li.erow,li.erow.eedit{grid-template-columns:1fr}.eact{flex-direction:row;flex-wrap:wrap}.eform,.egrid{grid-template-columns:1fr}}
 .chrono{margin-bottom:18px}
 .cdisp{font:800 clamp(2.4rem,9vw,3.6rem)/1 "Bricolage Grotesque",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:6px 0 14px}
@@ -196,10 +198,11 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   </div>
   <div id="pEnt" role="tabpanel" aria-labelledby="tabEnt" hidden>
     <section class="cat" aria-labelledby="eTitle">
-      <div class="cat-head"><h2 id="eTitle">Entretien des PC<span class="n" id="eN">0</span></h2></div>
+      <div class="cat-head"><h2 id="eTitle">Entretien des PC<span class="n" id="eN">0</span></h2><a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1qgwfGXX7lf6b0BZ9KwDhi4dO3cNovByYOsx2q6fYrBE/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">Ouvrir le Sheet des devis</a></div>
       <p class="h" style="margin:0 0 8px">Une pastille orange apparaît après 6 mois (sans notification). À 1 an, la pastille passe au rouge et un rappel s'affiche en haut du hub à chaque ouverture. Le compte repart après chaque entretien.</p>
       <form id="eForm" class="eform">
         <input id="eName" placeholder="Client" aria-label="Nom du client" maxlength="60" required>
+        <input id="eDevis" placeholder="N° de devis" aria-label="Numéro de devis" maxlength="30">
         <input id="ePc" placeholder="PC (ex. gaming RTX 5060)" aria-label="PC" maxlength="80">
         <input id="eDate" type="date" aria-label="Date de commande" required>
         <button class="primary" type="submit">Ajouter</button>
@@ -368,7 +371,7 @@ $("iOk").onclick=function(){
     if(Array.isArray(d.tarifs)&&d.tarifs.length){TAR=d.tarifs.filter(function(x){return x&&x.name&&isFinite(x.price)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price}});if(!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));saveT();renderTarifs()}
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
     if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
-    if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
+    if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),dv:String(x.dv||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
     delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
@@ -525,19 +528,22 @@ function updateE(){
   $("tabEnt").textContent="Entretien"+(due.length?" ("+due.length+")":"");
   $("eN").textContent=String(ENT.length);
 }
+function copyTxt(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){eMsg("N° de devis copié : "+t)},function(){eMsg("Copie impossible sur ce navigateur.")})}else{eMsg("Copie impossible sur ce navigateur.")}
+}
 function eEditRow(it){
   var li=el("li","erow eedit");
   var mk=function(type,val,label){var i=el("input");i.type=type;i.value=val||"";i.setAttribute("aria-label",label);return i};
-  var n=mk("text",it.client,"Client"),p=mk("text",it.pc,"PC"),o=mk("date",it.order,"Date de commande"),l=mk("date",it.last,"Date du dernier entretien");
-  n.maxLength=60;p.maxLength=80;
+  var n=mk("text",it.client,"Client"),p=mk("text",it.pc,"PC"),o=mk("date",it.order,"Date de commande"),l=mk("date",it.last,"Date du dernier entretien"),dv=mk("text",it.dv,"Numéro de devis");
+  n.maxLength=60;p.maxLength=80;dv.maxLength=30;
   var lab=function(t,x){var d=el("div","fl");d.append(el("span","h",t),x);return d};
   var wrap=el("div","egrid");
-  wrap.append(lab("Client",n),lab("PC",p),lab("Date de commande",o),lab("Dernier entretien (vide = jamais)",l));
+  wrap.append(lab("Client",n),lab("N° de devis",dv),lab("PC",p),lab("Date de commande",o),lab("Dernier entretien (vide = jamais)",l));
   var ok=el("button","primary","Enregistrer");ok.type="button";
   var no=el("button","ghost","Annuler");no.type="button";
   ok.onclick=function(){
     var name=n.value.trim();if(!name||!o.value){eMsg("Remplis le client et la date de commande.");return}
-    it.client=name;it.pc=p.value.trim();it.order=o.value;it.last=l.value||"";eEdit=null;saveE();eMsg("");renderEnt();
+    it.client=name;it.dv=dv.value.trim();it.pc=p.value.trim();it.order=o.value;it.last=l.value||"";eEdit=null;saveE();eMsg("");renderEnt();
   };
   no.onclick=function(){eEdit=null;eMsg("");renderEnt()};
   var act=el("div","eact");act.append(ok,no);li.append(wrap,act);
@@ -551,6 +557,7 @@ function renderEnt(){
     if(eEdit===it.id){ul.appendChild(eEditRow(it));return}
     var f=eInfo(it),li=el("li","erow");
     var c1=el("div","ec");c1.append(el("b",null,it.client),el("span","h",it.pc||"PC non précisé"));
+    if(it.dv){var dl=el("span","h","Devis n° "+it.dv+" ");var cp=el("button","ghost edit","Copier");cp.type="button";cp.setAttribute("aria-label","Copier le numéro de devis "+it.dv);cp.onclick=function(){copyTxt(it.dv)};dl.appendChild(cp);c1.appendChild(dl)}
     var c2=el("div","ec");
     var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?f.mb+" mois écoulés":"À jour");
     var badge=el("span","eb "+f.st,label);
@@ -567,10 +574,10 @@ function renderEnt(){
 }
 $("eForm").addEventListener("submit",function(e){
   e.preventDefault();
-  var name=$("eName").value.trim(),pc=$("ePc").value.trim(),od=$("eDate").value;
+  var name=$("eName").value.trim(),pc=$("ePc").value.trim(),dv=$("eDevis").value.trim(),od=$("eDate").value;
   if(!name||!od){eMsg("Remplis le client et la date de commande.");return}
-  ENT.push({id:uid(),client:name,pc:pc,order:od,last:""});saveE();
-  $("eName").value="";$("ePc").value="";$("eDate").value=isoD(todayD());
+  ENT.push({id:uid(),client:name,pc:pc,dv:dv,order:od,last:""});saveE();
+  $("eName").value="";$("ePc").value="";$("eDevis").value="";$("eDate").value=isoD(todayD());
   renderEnt();$("eName").focus();
 });
 $("eDate").value=isoD(todayD());
