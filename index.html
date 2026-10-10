@@ -76,6 +76,13 @@ li.krow.on .klab span{color:var(--muted);text-decoration:line-through}
 .kdone{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;font-weight:600}
 .kform{display:flex;gap:8px;margin-top:12px}
 .kfoot{display:flex;justify-content:flex-end;margin-top:6px}
+li.mrow{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);padding:6px 4px}
+.mt{flex:1;min-width:0;font-weight:500}
+li.mrow.ko .mt{color:var(--warn);font-weight:700}
+.mbtn{padding:7px 12px;min-width:64px}
+.mbtn[aria-pressed="true"].mok{background:#16a34a;border-color:#16a34a;color:#fff}
+.mbtn[aria-pressed="true"].mko{background:#dc2626;border-color:#dc2626;color:#fff}
+@media (max-width:560px){li.mrow{flex-wrap:wrap}.mt{flex-basis:100%}}
 .stock{margin-top:18px}
 .sform{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;margin:6px 0 4px}
 .sundo{min-height:1.5em;color:var(--muted);font-size:.9rem;display:flex;align-items:center;gap:6px}
@@ -119,6 +126,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   <div class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" id="tabLinks" aria-selected="true" aria-controls="pLinks">Hub</button>
     <button type="button" role="tab" id="tabCheck" aria-selected="false" aria-controls="pCheck">Checklist</button>
+    <button type="button" role="tab" id="tabSup" aria-selected="false" aria-controls="pSup">Matériel</button>
   </div>
   <div id="pLinks" role="tabpanel" aria-labelledby="tabLinks">
   <main class="grid" id="grid"></main>
@@ -151,6 +159,16 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       <div class="kdone" id="kDone" role="status" hidden><span>Tout est vérifié, tu peux rendre le PC.</span><button class="primary" id="kFinish" type="button">Terminer et réinitialiser</button></div>
       <form id="kForm" class="kform"><input id="kNew" placeholder="Ajouter un point à vérifier" aria-label="Nouveau point à vérifier" maxlength="120"><button type="submit">Ajouter</button></form>
       <div class="kfoot"><button class="ghost" id="kDefault" type="button">Liste par défaut</button></div>
+    </section>
+  </div>
+  <div id="pSup" role="tabpanel" aria-labelledby="tabSup" hidden>
+    <section class="cat" aria-labelledby="mTitle">
+      <div class="cat-head"><h2 id="mTitle">Matériel nécessaire</h2><button class="ghost" id="mReset" type="button">Tout remettre à vérifier</button></div>
+      <div class="sundo"><span id="mSum"></span><button class="ghost" id="mCopy" type="button" hidden>Copier ce qui manque</button></div>
+      <div class="sundo" id="mMsg" role="status"></div>
+      <ul id="mList"></ul>
+      <form id="mForm" class="kform"><input id="mNew" placeholder="Ajouter du matériel" aria-label="Nouveau matériel" maxlength="80"><button type="submit">Ajouter</button></form>
+      <div class="kfoot"><button class="ghost" id="mDefault" type="button">Liste par défaut</button></div>
     </section>
   </div>
   <footer>
@@ -300,7 +318,7 @@ $("fCat").addEventListener("submit",function(){
 $("q").addEventListener("input",render);
 
 $("exp").onclick=function(){
-  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI}));
+  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP}));
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){flash("Sauvegarde copiée.")},function(){flash("Copie impossible sur ce navigateur.")})}
   else flash("Copie impossible sur ce navigateur.");
 };
@@ -312,7 +330,8 @@ $("iOk").onclick=function(){
     if(Array.isArray(d.stock)){STK=d.stock.filter(function(x){return x&&x.name&&isFinite(x.price)&&isFinite(x.qty)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price,qty:Math.max(0,Math.floor(+x.qty))}});saveS();renderStock()}
     if(Array.isArray(d.tarifs)&&d.tarifs.length){TAR=d.tarifs.filter(function(x){return x&&x.name&&isFinite(x.price)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price}});if(!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));saveT();renderTarifs()}
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
-    delete d.stock;delete d.tarifs;delete d.check;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
+    if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
+    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
 
@@ -393,13 +412,57 @@ arm($("kDefault"),"Confirmer",function(){
   KI=kDefaults();KCHK={};saveK();renderCheck();
 });
 function showTab(name){
-  var chk=name==="check";
-  $("pLinks").hidden=chk;$("pCheck").hidden=!chk;$("bar").hidden=chk;
-  $("tabLinks").setAttribute("aria-selected",String(!chk));$("tabCheck").setAttribute("aria-selected",String(chk));
-  try{history.replaceState(null,"",chk?"#checklist":location.pathname+location.search)}catch(e){}
+  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"]};
+  Object.keys(P).forEach(function(k){var on=k===name;$(P[k][0]).hidden=!on;$(P[k][1]).setAttribute("aria-selected",String(on))});
+  $("bar").hidden=name!=="links";
+  var H={check:"#checklist",sup:"#materiel"};
+  try{history.replaceState(null,"",name==="links"?location.pathname+location.search:H[name])}catch(e){}
 }
 $("tabLinks").onclick=function(){showTab("links")};
 $("tabCheck").onclick=function(){showTab("check")};
+$("tabSup").onclick=function(){showTab("sup")};
+var SDEF=["Pâte thermique","Gants","Serre-câbles (colliers)","Alcool isopropylique","Chiffons microfibres et cotons-tiges","Tournevis (cruciforme et embouts)","Pince coupante","Bracelet antistatique","Air comprimé ou souffleur","Vis et entretoises de rechange","Clé USB d'installation Windows","Straps velcro pour les câbles","Lampe","Emballage de protection pour la livraison"];
+function sDefaults(){return SDEF.map(function(t,i){return{id:"m"+(i+1),text:t,st:0}})}
+var SUP=null;
+try{var rm=localStorage.getItem("ggbuild-sup-v1");SUP=rm?JSON.parse(rm):null}catch(e){SUP=null}
+if(!Array.isArray(SUP)||!SUP.length)SUP=sDefaults();
+function saveM(){try{localStorage.setItem("ggbuild-sup-v1",JSON.stringify(SUP))}catch(e){}}
+var mT;
+function mMsg(t){var m=$("mMsg");m.textContent=t||"";clearTimeout(mT);if(t)mT=setTimeout(function(){m.textContent=""},2800)}
+function updateM(){
+  var ok=SUP.filter(function(x){return x.st===1}).length,ko=SUP.filter(function(x){return x.st===2}).length,td=SUP.length-ok-ko;
+  $("mSum").textContent=ok+" OK · "+ko+" pas OK"+(td?" · "+td+" à vérifier":"");
+  $("mCopy").hidden=!ko;
+}
+function renderSup(){
+  var ul=$("mList");ul.textContent="";
+  SUP.forEach(function(it){
+    var li=el("li","mrow"+(it.st===2?" ko":""));
+    var bo=el("button","mbtn mok","OK"),bk=el("button","mbtn mko","Pas OK");
+    bo.type="button";bk.type="button";
+    bo.setAttribute("aria-label",it.text+" : OK");bk.setAttribute("aria-label",it.text+" : pas OK");
+    var paint=function(){bo.setAttribute("aria-pressed",String(it.st===1));bk.setAttribute("aria-pressed",String(it.st===2));li.className="mrow"+(it.st===2?" ko":"")};
+    var set=function(v){return function(){it.st=it.st===v?0:v;saveM();paint();updateM()}};
+    bo.onclick=set(1);bk.onclick=set(2);paint();
+    var d=el("button","ghost","Retirer");d.type="button";d.setAttribute("aria-label","Retirer de la liste : "+it.text);
+    arm(d,"Confirmer",function(){SUP=SUP.filter(function(x){return x.id!==it.id});saveM();renderSup()});
+    li.append(el("div","mt",it.text),bo,bk,d);ul.appendChild(li);
+  });
+  updateM();
+}
+$("mReset").onclick=function(){SUP.forEach(function(x){x.st=0});saveM();renderSup()};
+$("mCopy").onclick=function(){
+  var t="À racheter : "+SUP.filter(function(x){return x.st===2}).map(function(x){return x.text}).join(", ");
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){mMsg("Liste copiée.")},function(){mMsg("Copie impossible sur ce navigateur.")})}else{mMsg("Copie impossible sur ce navigateur.")}
+};
+$("mForm").addEventListener("submit",function(e){
+  e.preventDefault();var t=$("mNew").value.trim();if(!t)return;
+  SUP.push({id:uid(),text:t,st:0});saveM();$("mNew").value="";renderSup();$("mNew").focus();
+});
+arm($("mDefault"),"Confirmer",function(){
+  var b=$("mDefault");delete b.dataset.armed;b.classList.remove("armed");b.textContent="Liste par défaut";
+  SUP=sDefaults();saveM();renderSup();
+});
 var STK=[];
 try{var rs=localStorage.getItem("ggbuild-stock-v1");STK=rs?JSON.parse(rs):[]}catch(e){STK=[]}
 if(!Array.isArray(STK))STK=[];
@@ -462,8 +525,8 @@ $("sForm").addEventListener("submit",function(e){
   STK.push({id:uid(),name:name,price:price,qty:qty});saveS();renderStock();sMsg("");
   $("sName").value="";$("sPrice").value="";$("sQty").value="";$("sName").focus();
 });
-render();renderStock();renderTarifs();renderCheck();
-if(location.hash==="#checklist")showTab("check");
+render();renderStock();renderTarifs();renderCheck();renderSup();
+if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");
 })();
 </script>
 </body>
