@@ -83,6 +83,22 @@ li.mrow.ko .mt{color:var(--warn);font-weight:700}
 .mbtn[aria-pressed="true"].mok{background:#16a34a;border-color:#16a34a;color:#fff}
 .mbtn[aria-pressed="true"].mko{background:#dc2626;border-color:#dc2626;color:#fff}
 @media (max-width:560px){li.mrow{flex-wrap:wrap}.mt{flex-basis:100%}}
+.ealert{display:block;width:100%;text-align:left;background:#b91c1c;color:#fff;border:0;padding:12px 14px;border-radius:10px;margin-bottom:14px;font-weight:600}
+li.erow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) auto;gap:8px 14px;align-items:center;border-top:1px solid var(--line);padding:12px 4px}
+li.erow.eedit{grid-template-columns:minmax(0,1fr) auto}
+.ec b{display:block}
+.ec .h{display:block;white-space:normal}
+.eb{display:inline-block;font-size:.8rem;font-weight:700;padding:2px 9px;border-radius:99px;color:#fff;margin-top:4px}
+.eb.due{background:#b91c1c}.eb.soon{background:#b45309}.eb.ok{background:#15803d}
+.eact{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.egrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fl{display:flex;flex-direction:column;gap:2px}
+.eform{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
+@media (max-width:700px){li.erow,li.erow.eedit{grid-template-columns:1fr}.eact{flex-direction:row;flex-wrap:wrap}.eform,.egrid{grid-template-columns:1fr}}
+.chrono{margin-bottom:18px}
+.cdisp{font:800 clamp(2.4rem,9vw,3.6rem)/1 "Bricolage Grotesque",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:6px 0 14px}
+.cdisp.run{color:var(--accent)}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap}
 .stock{margin-top:18px}
 .sform{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;margin:6px 0 4px}
 .sundo{min-height:1.5em;color:var(--muted);font-size:.9rem;display:flex;align-items:center;gap:6px}
@@ -123,10 +139,12 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       <button id="addCat">Nouvelle catégorie</button>
     </div>
   </header>
+  <button type="button" class="ealert" id="entAlert" hidden></button>
   <div class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" id="tabLinks" aria-selected="true" aria-controls="pLinks">Hub</button>
     <button type="button" role="tab" id="tabCheck" aria-selected="false" aria-controls="pCheck">Checklist</button>
     <button type="button" role="tab" id="tabSup" aria-selected="false" aria-controls="pSup">Matériel</button>
+    <button type="button" role="tab" id="tabEnt" aria-selected="false" aria-controls="pEnt">Entretien</button>
   </div>
   <div id="pLinks" role="tabpanel" aria-labelledby="tabLinks">
   <main class="grid" id="grid"></main>
@@ -152,6 +170,11 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   </section>
   </div>
   <div id="pCheck" role="tabpanel" aria-labelledby="tabCheck" hidden>
+    <section class="cat chrono" aria-labelledby="cTitle">
+      <div class="cat-head"><h2 id="cTitle">Chronomètre de montage</h2></div>
+      <div class="cdisp" id="cDisp" role="timer" aria-live="off">00:00:00</div>
+      <div class="cbtns"><button class="primary" id="cGo" type="button">Démarrer</button><button id="cReset" type="button">Remettre à zéro</button></div>
+    </section>
     <section class="cat" aria-labelledby="kTitle">
       <div class="cat-head"><h2 id="kTitle">Avant de rendre le PC<span class="n" id="kN">0/0</span></h2><button class="ghost" id="kReset" type="button">Tout décocher</button></div>
       <div class="kbar" aria-hidden="true"><div class="kfill" id="kFill"></div></div>
@@ -169,6 +192,20 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       <ul id="mList"></ul>
       <form id="mForm" class="kform"><input id="mNew" placeholder="Ajouter du matériel" aria-label="Nouveau matériel" maxlength="80"><button type="submit">Ajouter</button></form>
       <div class="kfoot"><button class="ghost" id="mDefault" type="button">Liste par défaut</button></div>
+    </section>
+  </div>
+  <div id="pEnt" role="tabpanel" aria-labelledby="tabEnt" hidden>
+    <section class="cat" aria-labelledby="eTitle">
+      <div class="cat-head"><h2 id="eTitle">Entretien des PC<span class="n" id="eN">0</span></h2></div>
+      <p class="h" style="margin:0 0 8px">Un rappel apparaît 6 mois après la commande, puis 6 mois après chaque entretien. Il s'affiche en haut du hub à chaque ouverture.</p>
+      <form id="eForm" class="eform">
+        <input id="eName" placeholder="Client" aria-label="Nom du client" maxlength="60" required>
+        <input id="ePc" placeholder="PC (ex. gaming RTX 5060)" aria-label="PC" maxlength="80">
+        <input id="eDate" type="date" aria-label="Date de commande" required>
+        <button class="primary" type="submit">Ajouter</button>
+      </form>
+      <div class="sundo" id="eMsg" role="status"></div>
+      <ul id="eList"></ul>
     </section>
   </div>
   <footer>
@@ -318,7 +355,7 @@ $("fCat").addEventListener("submit",function(){
 $("q").addEventListener("input",render);
 
 $("exp").onclick=function(){
-  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP}));
+  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP,ent:ENT}));
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){flash("Sauvegarde copiée.")},function(){flash("Copie impossible sur ce navigateur.")})}
   else flash("Copie impossible sur ce navigateur.");
 };
@@ -331,7 +368,8 @@ $("iOk").onclick=function(){
     if(Array.isArray(d.tarifs)&&d.tarifs.length){TAR=d.tarifs.filter(function(x){return x&&x.name&&isFinite(x.price)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price}});if(!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));saveT();renderTarifs()}
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
     if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
-    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
+    if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
+    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
 
@@ -412,10 +450,10 @@ arm($("kDefault"),"Confirmer",function(){
   KI=kDefaults();KCHK={};saveK();renderCheck();
 });
 function showTab(name){
-  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"]};
+  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"]};
   Object.keys(P).forEach(function(k){var on=k===name;$(P[k][0]).hidden=!on;$(P[k][1]).setAttribute("aria-selected",String(on))});
   $("bar").hidden=name!=="links";
-  var H={check:"#checklist",sup:"#materiel"};
+  var H={check:"#checklist",sup:"#materiel",ent:"#entretien"};
   try{history.replaceState(null,"",name==="links"?location.pathname+location.search:H[name])}catch(e){}
 }
 $("tabLinks").onclick=function(){showTab("links")};
@@ -463,6 +501,95 @@ arm($("mDefault"),"Confirmer",function(){
   var b=$("mDefault");delete b.dataset.armed;b.classList.remove("armed");b.textContent="Liste par défaut";
   SUP=sDefaults();saveM();renderSup();
 });
+var ENT=null;
+try{var re=localStorage.getItem("ggbuild-ent-v1");ENT=re?JSON.parse(re):null}catch(e){ENT=null}
+if(!Array.isArray(ENT))ENT=[];
+function saveE(){try{localStorage.setItem("ggbuild-ent-v1",JSON.stringify(ENT))}catch(e){}}
+var eEdit=null,eT;
+function eMsg(t){var m=$("eMsg");m.textContent=t||"";clearTimeout(eT);if(t)eT=setTimeout(function(){m.textContent=""},3000)}
+function todayD(){var t=new Date();t.setHours(0,0,0,0);return t}
+function isoD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function pd(s){var a=String(s).split("-");return new Date(+a[0],+a[1]-1,+a[2])}
+function addM(d,n){var r=new Date(d.getFullYear(),d.getMonth()+n,1),last=new Date(r.getFullYear(),r.getMonth()+1,0).getDate();r.setDate(Math.min(d.getDate(),last));return r}
+function monthsS(a,b){var m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth();if(b.getDate()<a.getDate())m--;return Math.max(0,m)}
+function fmtD(d){return d.toLocaleDateString("fr-BE")}
+function mois(n){return n<1?"moins d'un mois":n+" mois"}
+function eInfo(it){
+  var t=todayD(),o=pd(it.order),l=it.last?pd(it.last):null,due=addM(l||o,6),days=Math.round((due-t)/864e5);
+  return{o:o,l:l,due:due,days:days,st:days<=0?"due":(days<=30?"soon":"ok"),m:monthsS(o,t)};
+}
+function updateE(){
+  var due=ENT.filter(function(x){return eInfo(x).st==="due"});
+  var b=$("entAlert");
+  if(due.length){b.hidden=false;b.textContent=due.length+" PC à entretenir : "+due.map(function(x){return x.client}).join(", ")}else{b.hidden=true;b.textContent=""}
+  $("tabEnt").textContent="Entretien"+(due.length?" ("+due.length+")":"");
+  $("eN").textContent=String(ENT.length);
+}
+function eEditRow(it){
+  var li=el("li","erow eedit");
+  var mk=function(type,val,label){var i=el("input");i.type=type;i.value=val||"";i.setAttribute("aria-label",label);return i};
+  var n=mk("text",it.client,"Client"),p=mk("text",it.pc,"PC"),o=mk("date",it.order,"Date de commande"),l=mk("date",it.last,"Date du dernier entretien");
+  n.maxLength=60;p.maxLength=80;
+  var lab=function(t,x){var d=el("div","fl");d.append(el("span","h",t),x);return d};
+  var wrap=el("div","egrid");
+  wrap.append(lab("Client",n),lab("PC",p),lab("Date de commande",o),lab("Dernier entretien (vide = jamais)",l));
+  var ok=el("button","primary","Enregistrer");ok.type="button";
+  var no=el("button","ghost","Annuler");no.type="button";
+  ok.onclick=function(){
+    var name=n.value.trim();if(!name||!o.value){eMsg("Remplis le client et la date de commande.");return}
+    it.client=name;it.pc=p.value.trim();it.order=o.value;it.last=l.value||"";eEdit=null;saveE();eMsg("");renderEnt();
+  };
+  no.onclick=function(){eEdit=null;eMsg("");renderEnt()};
+  var act=el("div","eact");act.append(ok,no);li.append(wrap,act);
+  setTimeout(function(){n.focus()},0);
+  return li;
+}
+function renderEnt(){
+  var ul=$("eList");ul.textContent="";
+  if(!ENT.length){ul.appendChild(el("li","empty","Aucun PC suivi pour l'instant. Ajoute le premier avec le formulaire ci-dessus."))}
+  ENT.slice().sort(function(a,b){return eInfo(a).due-eInfo(b).due}).forEach(function(it){
+    if(eEdit===it.id){ul.appendChild(eEditRow(it));return}
+    var f=eInfo(it),li=el("li","erow");
+    var c1=el("div","ec");c1.append(el("b",null,it.client),el("span","h",it.pc||"PC non précisé"));
+    var c2=el("div","ec");
+    var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?"Dans "+f.days+" j":"À jour");
+    var badge=el("span","eb "+f.st,label);
+    c2.append(el("b",null,"Commandé il y a "+mois(f.m)),el("span","h","le "+fmtD(f.o)+" · dernier entretien : "+(f.l?fmtD(f.l):"jamais")),el("span","h","Prochain entretien : "+fmtD(f.due)),badge);
+    var done=el("button","primary","Entretien fait");done.type="button";
+    done.onclick=function(){it.last=isoD(todayD());saveE();eMsg("Entretien noté pour "+it.client+". Prochain rappel dans 6 mois.");renderEnt()};
+    var ed=el("button","ghost edit","Modifier");ed.type="button";ed.onclick=function(){eEdit=it.id;eMsg("");renderEnt()};
+    var rm=el("button","ghost","Retirer");rm.type="button";
+    arm(rm,"Confirmer",function(){ENT=ENT.filter(function(x){return x.id!==it.id});saveE();renderEnt()});
+    var act=el("div","eact");act.append(done,ed,rm);
+    li.append(c1,c2,act);ul.appendChild(li);
+  });
+  updateE();
+}
+$("eForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  var name=$("eName").value.trim(),pc=$("ePc").value.trim(),od=$("eDate").value;
+  if(!name||!od){eMsg("Remplis le client et la date de commande.");return}
+  ENT.push({id:uid(),client:name,pc:pc,order:od,last:""});saveE();
+  $("eName").value="";$("ePc").value="";$("eDate").value=isoD(todayD());
+  renderEnt();$("eName").focus();
+});
+$("eDate").value=isoD(todayD());
+$("entAlert").onclick=function(){showTab("ent")};
+$("tabEnt").onclick=function(){showTab("ent")};
+
+var CH=null;
+try{var rc=localStorage.getItem("ggbuild-chrono-v1");CH=rc?JSON.parse(rc):null}catch(e){CH=null}
+if(!CH||typeof CH.acc!=="number")CH={acc:0,start:null};
+function saveC(){try{localStorage.setItem("ggbuild-chrono-v1",JSON.stringify(CH))}catch(e){}}
+function cMs(){return CH.acc+(CH.start?Date.now()-CH.start:0)}
+function cFmt(ms){var t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0")}
+function paintC(){$("cDisp").textContent=cFmt(cMs());$("cDisp").classList.toggle("run",!!CH.start);$("cGo").textContent=CH.start?"Pause":(CH.acc>0?"Reprendre":"Démarrer")}
+$("cGo").onclick=function(){
+  if(CH.start){CH.acc+=Date.now()-CH.start;CH.start=null}else{CH.start=Date.now()}
+  saveC();paintC();
+};
+$("cReset").onclick=function(){CH={acc:0,start:null};saveC();paintC()};
+setInterval(function(){if(CH.start)$("cDisp").textContent=cFmt(cMs())},250);
 var STK=[];
 try{var rs=localStorage.getItem("ggbuild-stock-v1");STK=rs?JSON.parse(rs):[]}catch(e){STK=[]}
 if(!Array.isArray(STK))STK=[];
@@ -525,8 +652,8 @@ $("sForm").addEventListener("submit",function(e){
   STK.push({id:uid(),name:name,price:price,qty:qty});saveS();renderStock();sMsg("");
   $("sName").value="";$("sPrice").value="";$("sQty").value="";$("sName").focus();
 });
-render();renderStock();renderTarifs();renderCheck();renderSup();
-if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");
+render();renderStock();renderTarifs();renderCheck();renderSup();renderEnt();paintC();
+if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");
 })();
 </script>
 </body>
