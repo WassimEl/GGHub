@@ -96,6 +96,12 @@ li.erow.eedit{grid-template-columns:minmax(0,1fr) auto}
 .eform{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1.2fr) minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
 .sheetlink{font-weight:600;font-size:.9rem;color:var(--accent);text-decoration:none;padding:6px 9px;border-radius:8px}
 .sheetlink:hover{background:var(--bg)}
+.pbig{max-width:420px;font-size:1.15rem;letter-spacing:.04em;text-transform:uppercase}
+.pres{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+.pres.ok{border-color:#16a34a}.pres .dv{font-weight:700;font-size:1.05rem}
+.pdet{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.pdet summary{cursor:pointer;font-weight:600}
+.pform{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin:8px 0}
+@media (max-width:700px){.pform{grid-template-columns:1fr}}
 @media (max-width:700px){li.erow,li.erow.eedit{grid-template-columns:1fr}.eact{flex-direction:row;flex-wrap:wrap}.eform,.egrid{grid-template-columns:1fr}}
 .chrono{margin-bottom:18px}
 .cdisp{font:800 clamp(2.4rem,9vw,3.6rem)/1 "Bricolage Grotesque",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:6px 0 14px}
@@ -147,6 +153,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
     <button type="button" role="tab" id="tabCheck" aria-selected="false" aria-controls="pCheck">Checklist</button>
     <button type="button" role="tab" id="tabSup" aria-selected="false" aria-controls="pSup">Matériel</button>
     <button type="button" role="tab" id="tabEnt" aria-selected="false" aria-controls="pEnt">Entretien</button>
+    <button type="button" role="tab" id="tabPar" aria-selected="false" aria-controls="pPar">Parrainage</button>
   </div>
   <div id="pLinks" role="tabpanel" aria-labelledby="tabLinks">
   <main class="grid" id="grid"></main>
@@ -209,6 +216,28 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       </form>
       <div class="sundo" id="eMsg" role="status"></div>
       <ul id="eList"></ul>
+    </section>
+  </div>
+  <div id="pPar" role="tabpanel" aria-labelledby="tabPar" hidden>
+    <section class="cat" aria-labelledby="pTitle">
+      <div class="cat-head"><h2 id="pTitle">Code de parrainage<span class="n" id="pN">0</span></h2><a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1qgwfGXX7lf6b0BZ9KwDhi4dO3cNovByYOsx2q6fYrBE/edit?gid=1001#gid=1001" target="_blank" rel="noopener noreferrer">Ouvrir l'onglet Parrainage</a></div>
+      <p class="h" style="margin:0 0 8px">Tape le code donné par le nouveau client (ex. GG-042K) : le devis du parrain s'affiche.</p>
+      <input id="pCode" class="pbig" placeholder="GG-042K" aria-label="Code de parrainage" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div id="pRes" role="status" aria-live="polite"></div>
+      <details class="pdet" id="pDet">
+        <summary>Mettre à jour la liste des codes</summary>
+        <p class="h">Dans l'onglet Parrainage du Sheet, sélectionne les colonnes A à E (de « N° commande » à « Code parrain »), copie, puis colle ici. Les codes déjà présents sont conservés, les nouveaux sont ajoutés.</p>
+        <textarea id="pPaste" aria-label="Données copiées depuis le Sheet" placeholder="Colle ici les colonnes copiées du Sheet"></textarea>
+        <div class="kfoot"><button class="primary" id="pImp" type="button">Ajouter à la liste</button></div>
+        <p class="h" style="margin-top:12px">Ou ajoute un seul code à la main :</p>
+        <form id="pForm" class="pform">
+          <input id="pfCode" placeholder="Code (GG-042K)" aria-label="Code" maxlength="10" required>
+          <input id="pfDevis" placeholder="N° de devis (GBCMD-26-05)" aria-label="Numéro de devis" maxlength="30" required>
+          <input id="pfName" placeholder="Client" aria-label="Client" maxlength="60">
+          <button class="primary" type="submit">Ajouter</button>
+        </form>
+        <div class="sundo" id="pMsg" role="status"></div>
+      </details>
     </section>
   </div>
   <footer>
@@ -358,7 +387,7 @@ $("fCat").addEventListener("submit",function(){
 $("q").addEventListener("input",render);
 
 $("exp").onclick=function(){
-  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP,ent:ENT}));
+  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP,ent:ENT,par:PAR}));
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){flash("Sauvegarde copiée.")},function(){flash("Copie impossible sur ce navigateur.")})}
   else flash("Copie impossible sur ce navigateur.");
 };
@@ -372,7 +401,8 @@ $("iOk").onclick=function(){
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
     if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
     if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),dv:String(x.dv||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
-    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
+    if(Array.isArray(d.par)){PAR=d.par.filter(function(x){return x&&CODE_RX.test(String(x.code||"").toUpperCase())&&x.devis}).map(function(x){return{code:String(x.code).toUpperCase(),devis:String(x.devis),client:String(x.client||"")}});savePar();renderPar()}
+    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;delete d.par;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
 
@@ -453,15 +483,16 @@ arm($("kDefault"),"Confirmer",function(){
   KI=kDefaults();KCHK={};saveK();renderCheck();
 });
 function showTab(name){
-  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"]};
+  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"],par:["pPar","tabPar"]};
   Object.keys(P).forEach(function(k){var on=k===name;$(P[k][0]).hidden=!on;$(P[k][1]).setAttribute("aria-selected",String(on))});
   $("bar").hidden=name!=="links";
-  var H={check:"#checklist",sup:"#materiel",ent:"#entretien"};
+  var H={check:"#checklist",sup:"#materiel",ent:"#entretien",par:"#parrainage"};
   try{history.replaceState(null,"",name==="links"?location.pathname+location.search:H[name])}catch(e){}
 }
 $("tabLinks").onclick=function(){showTab("links")};
 $("tabCheck").onclick=function(){showTab("check")};
 $("tabSup").onclick=function(){showTab("sup")};
+$("tabPar").onclick=function(){showTab("par");$("pCode").focus()};
 var SDEF=["Pâte thermique","Gants","Serre-câbles (colliers)","Alcool isopropylique","Chiffons microfibres et cotons-tiges","Tournevis (cruciforme et embouts)","Pince coupante","Bracelet antistatique","Air comprimé ou souffleur","Vis et entretoises de rechange","Clé USB d'installation Windows","Straps velcro pour les câbles","Lampe","Emballage de protection pour la livraison"];
 function sDefaults(){return SDEF.map(function(t,i){return{id:"m"+(i+1),text:t,st:0}})}
 var SUP=null;
@@ -659,8 +690,68 @@ $("sForm").addEventListener("submit",function(e){
   STK.push({id:uid(),name:name,price:price,qty:qty});saveS();renderStock();sMsg("");
   $("sName").value="";$("sPrice").value="";$("sQty").value="";$("sName").focus();
 });
-render();renderStock();renderTarifs();renderCheck();renderSup();renderEnt();paintC();
-if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");
+
+var CODE_RX=/^GG-\d{3}[A-Z]$/,DEVIS_RX=/^GBCMD-\d+-\d+$/;
+var PAR=[];
+try{var rpar=localStorage.getItem("ggbuild-par-v1");PAR=rpar?JSON.parse(rpar):[]}catch(e){PAR=[]}
+if(!Array.isArray(PAR))PAR=[];
+function savePar(){try{localStorage.setItem("ggbuild-par-v1",JSON.stringify(PAR))}catch(e){}}
+var pT;function pMsg(t){var m=$("pMsg");m.textContent=t||"";clearTimeout(pT);if(t)pT=setTimeout(function(){m.textContent=""},4000)}
+function pCore(v){v=String(v||"").toUpperCase().replace(/[^0-9A-Z]/g,"");return v.indexOf("GG")===0?v.slice(2):v}
+function pFmt(v){var c=pCore(v);return /^\d{3}[A-Z]$/.test(c)?"GG-"+c:""}
+function pRow(it,exact){
+  var d=el("div","pres"+(exact?" ok":""));
+  var cp=el("button","ghost","Copier le devis");cp.type="button";
+  cp.onclick=function(){if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(it.devis).then(function(){cp.textContent="Copié";setTimeout(function(){cp.textContent="Copier le devis"},1500)},function(){})};
+  var rm=el("button","ghost","Supprimer");rm.type="button";
+  arm(rm,"Confirmer",function(){PAR=PAR.filter(function(x){return x.code!==it.code});savePar();renderPar()});
+  d.append(el("b",null,it.code),el("span","dv",it.devis),el("span","h",it.client||""),cp,rm);
+  return d;
+}
+function renderPar(){
+  $("pN").textContent=PAR.length;
+  var q=pCore($("pCode").value),box=$("pRes");box.textContent="";
+  if(!q){box.appendChild(el("p","h",PAR.length?"Entre un code pour retrouver le devis.":"La liste est vide : ouvre « Mettre à jour la liste » ci-dessous."));return}
+  var ex=PAR.filter(function(x){return pCore(x.code)===q});
+  var part=PAR.filter(function(x){var c=pCore(x.code);return c!==q&&c.indexOf(q)===0}).slice(0,5);
+  ex.forEach(function(x){box.appendChild(pRow(x,true))});
+  if(!ex.length){
+    if(part.length){box.appendChild(el("p","h","Pas de code exact. Codes qui commencent pareil :"));part.forEach(function(x){box.appendChild(pRow(x,false))})}
+    else box.appendChild(el("p","h","Aucun code trouvé. Si le devis est récent, mets la liste à jour ci-dessous."));
+  }
+}
+$("pCode").addEventListener("input",renderPar);
+function pAdd(code,devis,client){
+  var ex=PAR.filter(function(x){return x.code===code})[0];
+  if(ex)return ex.devis===devis?"same":"conflict";
+  PAR.push({code:code,devis:devis,client:client||""});return "new";
+}
+$("pImp").onclick=function(){
+  var lines=$("pPaste").value.split(/\r?\n/),n=0,same=0,bad=0;
+  lines.forEach(function(ln){
+    if(!ln.trim())return;
+    var c=ln.split("\t").map(function(x){return x.trim()}),code="",dv="",cl="";
+    c.forEach(function(x){var u=x.toUpperCase();if(CODE_RX.test(u))code=u;else if(DEVIS_RX.test(u))dv=u;else if(!cl&&x&&!/^[+\d\s]+$/.test(x)&&x!=="N° commande"&&x!=="Client")cl=x});
+    if(!code||!dv)return;
+    var r=pAdd(code,dv,cl);if(r==="new")n++;else if(r==="same")same++;else bad++;
+  });
+  savePar();renderPar();
+  pMsg(n+" ajouté"+(n>1?"s":"")+(same?", "+same+" déjà présent"+(same>1?"s":""):"")+(bad?", "+bad+" en conflit (ignoré"+(bad>1?"s":"")+")":"")+".");
+  if(n)$("pPaste").value="";
+};
+$("pForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  var code=pFmt($("pfCode").value),dv=$("pfDevis").value.trim().toUpperCase();
+  if(!code){pMsg("Code invalide : 3 chiffres et 1 lettre (ex. GG-042K).");return}
+  if(!DEVIS_RX.test(dv)){pMsg("N° de devis invalide (ex. GBCMD-26-05).");return}
+  var r=pAdd(code,dv,$("pfName").value.trim());
+  if(r==="conflict"){pMsg("Ce code existe déjà pour un autre devis.");return}
+  if(r==="same"){pMsg("Ce code est déjà dans la liste.");return}
+  savePar();renderPar();pMsg("Code ajouté.");
+  $("pfCode").value="";$("pfDevis").value="";$("pfName").value="";
+});
+render();renderStock();renderTarifs();renderCheck();renderSup();renderEnt();renderPar();paintC();
+if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");else if(location.hash==="#parrainage")showTab("par");
 })();
 </script>
 </body>
