@@ -96,6 +96,9 @@ li.erow.eedit{grid-template-columns:minmax(0,1fr) auto}
 .eform{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1.2fr) minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
 .sheetlink{font-weight:600;font-size:.9rem;color:var(--accent);text-decoration:none;padding:6px 9px;border-radius:8px}
 .sheetlink:hover{background:var(--bg)}
+.mbox{width:100%;min-height:170px;margin:8px 0}
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+@media (max-width:700px){.mrow{grid-template-columns:1fr}}
 .pbig{max-width:420px;font-size:1.15rem;letter-spacing:.04em;text-transform:uppercase}
 .pres{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
 .pres.ok{border-color:#16a34a}.pres .dv{font-weight:700;font-size:1.05rem}
@@ -154,6 +157,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
     <button type="button" role="tab" id="tabSup" aria-selected="false" aria-controls="pSup">Matériel</button>
     <button type="button" role="tab" id="tabEnt" aria-selected="false" aria-controls="pEnt">Entretien</button>
     <button type="button" role="tab" id="tabPar" aria-selected="false" aria-controls="pPar">Parrainage</button>
+    <button type="button" role="tab" id="tabMsg" aria-selected="false" aria-controls="pMsgs">Messages</button>
   </div>
   <div id="pLinks" role="tabpanel" aria-labelledby="tabLinks">
   <main class="grid" id="grid"></main>
@@ -238,6 +242,20 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
         </form>
         <div class="sundo" id="pMsg" role="status"></div>
       </details>
+    </section>
+  </div>
+  <div id="pMsgs" role="tabpanel" aria-labelledby="tabMsg" hidden>
+    <section class="cat" aria-labelledby="mTitle">
+      <div class="cat-head"><h2 id="mTitle">Messages tout faits</h2></div>
+      <p class="h" style="margin:0 0 8px">Choisis le message, remplis le prénom : le texte se complète tout seul. Tu peux le modifier avant de copier.</p>
+      <select id="mSel" aria-label="Message"></select>
+      <div class="mrow">
+        <input id="mName" placeholder="Prénom du client" aria-label="Prénom du client" maxlength="40">
+        <input id="mDevis" placeholder="N° de devis (GBCMD-26-05)" aria-label="Numéro de devis" maxlength="30">
+        <input id="mCode" placeholder="Code parrain (GG-123A)" aria-label="Code parrain" maxlength="10">
+      </div>
+      <textarea id="mOut" class="mbox" aria-label="Message à copier"></textarea>
+      <div class="kfoot"><button class="primary" id="mCopy" type="button">Copier le message</button></div>
     </section>
   </div>
   <footer>
@@ -483,16 +501,17 @@ arm($("kDefault"),"Confirmer",function(){
   KI=kDefaults();KCHK={};saveK();renderCheck();
 });
 function showTab(name){
-  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"],par:["pPar","tabPar"]};
+  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"],par:["pPar","tabPar"],msg:["pMsgs","tabMsg"]};
   Object.keys(P).forEach(function(k){var on=k===name;$(P[k][0]).hidden=!on;$(P[k][1]).setAttribute("aria-selected",String(on))});
   $("bar").hidden=name!=="links";
-  var H={check:"#checklist",sup:"#materiel",ent:"#entretien",par:"#parrainage"};
+  var H={check:"#checklist",sup:"#materiel",ent:"#entretien",par:"#parrainage",msg:"#messages"};
   try{history.replaceState(null,"",name==="links"?location.pathname+location.search:H[name])}catch(e){}
 }
 $("tabLinks").onclick=function(){showTab("links")};
 $("tabCheck").onclick=function(){showTab("check")};
 $("tabSup").onclick=function(){showTab("sup")};
 $("tabPar").onclick=function(){showTab("par");$("pCode").focus()};
+$("tabMsg").onclick=function(){showTab("msg")};
 var SDEF=["Pâte thermique","Gants","Serre-câbles (colliers)","Alcool isopropylique","Chiffons microfibres et cotons-tiges","Tournevis (cruciforme et embouts)","Pince coupante","Bracelet antistatique","Air comprimé ou souffleur","Vis et entretoises de rechange","Clé USB d'installation Windows","Straps velcro pour les câbles","Lampe","Emballage de protection pour la livraison"];
 function sDefaults(){return SDEF.map(function(t,i){return{id:"m"+(i+1),text:t,st:0}})}
 var SUP=null;
@@ -750,8 +769,32 @@ $("pForm").addEventListener("submit",function(e){
   savePar();renderPar();pMsg("Code ajouté.");
   $("pfCode").value="";$("pfDevis").value="";$("pfName").value="";
 });
+var MSGS=[
+["1. Demande reçue","Salut {prenom}, j'ai bien reçu ta demande de devis {devis}. Je l'étudie et je reviens vers toi très vite avec une proposition.\n\nGGBUILD"],
+["2. Devis envoyé","Salut {prenom}, ton devis {devis} est prêt, je te l'ai envoyé. Dis-moi si la configuration te convient ou si tu veux changer quelque chose (budget, composants, usage).\n\nGGBUILD"],
+["3. Commande confirmée","Merci {prenom} ! Ton devis {devis} est validé, je lance la commande des composants. Je te tiens au courant dès que tout est reçu et que je commence le montage.\n\nGGBUILD"],
+["4. Montage en cours","Salut {prenom}, bonne nouvelle : j'ai reçu tous les composants et le montage de ton PC (devis {devis}) est en cours. Je te préviens dès qu'il est prêt.\n\nGGBUILD"],
+["5. PC prêt","Salut {prenom}, ton PC est prêt (devis {devis}) ! Il a été monté et testé. On se met d'accord sur un moment pour que tu viennes le récupérer ?\n\nGGBUILD"],
+["6. Après remise + avis","Merci {prenom} pour ta confiance ! J'espère que ton PC te plaît. Si tu es content, ton avis m'aide beaucoup, ça prend 1 minute : https://tally.so/r/GxNz2j\n\nEt si un souci apparaît, écris-moi directement.\n\nGGBUILD"],
+["7. Code de parrainage","Salut {prenom}, voici ton code de parrainage GGBUILD : {code}\n\nSi un proche commande un PC chez moi en donnant ce code, ton prochain entretien (nettoyage poussière et pâte thermique) est offert une fois son PC récupéré et payé.\n\nGGBUILD"],
+["8. Rappel entretien (1 an)","Salut {prenom}, ton PC a maintenant 1 an. C'est le bon moment pour un entretien (nettoyage de la poussière et remplacement de la pâte thermique) pour garder de bonnes températures. Je te propose un créneau ?\n\nGGBUILD"]
+];
+var mS=$("mSel");
+MSGS.forEach(function(m,i){var o=el("option",null,m[0]);o.value=i;mS.appendChild(o)});
+function mFill(){
+  var t=MSGS[+mS.value][1];
+  t=t.replace(/\{prenom\}/g,$("mName").value.trim()||"[prénom]").replace(/\{devis\}/g,$("mDevis").value.trim().toUpperCase()||"[n° de devis]").replace(/\{code\}/g,$("mCode").value.trim().toUpperCase()||"[code]");
+  $("mOut").value=t;
+}
+["mSel","mName","mDevis","mCode"].forEach(function(id){$(id).addEventListener("input",mFill);$(id).addEventListener("change",mFill)});
+$("mCopy").onclick=function(){
+  var b=$("mCopy"),t=$("mOut").value;
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){b.textContent="Copié";setTimeout(function(){b.textContent="Copier le message"},1500)},function(){$("mOut").select()});
+  else $("mOut").select();
+};
+mFill();
 render();renderStock();renderTarifs();renderCheck();renderSup();renderEnt();renderPar();paintC();
-if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");else if(location.hash==="#parrainage")showTab("par");
+if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");else if(location.hash==="#parrainage")showTab("par");else if(location.hash==="#messages")showTab("msg");
 })();
 </script>
 </body>
