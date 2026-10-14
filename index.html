@@ -212,6 +212,8 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
     <section class="cat" aria-labelledby="eTitle">
       <div class="cat-head"><h2 id="eTitle">Entretien des PC<span class="n" id="eN">0</span></h2><a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1qgwfGXX7lf6b0BZ9KwDhi4dO3cNovByYOsx2q6fYrBE/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">Ouvrir le Sheet des devis</a></div>
       <p class="h" style="margin:0 0 8px">Une pastille orange apparaît après 6 mois (sans notification). À 1 an, la pastille passe au rouge et un rappel s'affiche en haut du hub à chaque ouverture. Le compte repart après chaque entretien.</p>
+      <p class="h" style="margin:0 0 8px">Les PC passés en « Livré » dans le Sheet s'ajoutent ici tout seuls (client = n° de devis, à renommer avec Modifier). Tout reste modifiable à la main.</p>
+      <div class="kfoot" style="margin:0 0 10px"><button class="ghost" id="eSync" type="button">Actualiser depuis le Sheet</button></div>
       <form id="eForm" class="eform">
         <input id="eName" placeholder="Client" aria-label="Nom du client" maxlength="60" required>
         <input id="eDevis" placeholder="N° de devis" aria-label="Numéro de devis" maxlength="30">
@@ -432,7 +434,7 @@ $("fCat").addEventListener("submit",function(){
 $("q").addEventListener("input",render);
 
 $("exp").onclick=function(){
-  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP,ent:ENT,par:PAR}));
+  var t=JSON.stringify(Object.assign({},S,{stock:STK,tarifs:TAR,check:KI,sup:SUP,ent:ENT,par:PAR,entskip:SKIP}));
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){flash("Sauvegarde copiée.")},function(){flash("Copie impossible sur ce navigateur.")})}
   else flash("Copie impossible sur ce navigateur.");
 };
@@ -446,8 +448,9 @@ $("iOk").onclick=function(){
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
     if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
     if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),dv:String(x.dv||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
+    if(Array.isArray(d.entskip)){SKIP=d.entskip.map(String);saveSkip()}
     if(Array.isArray(d.par)){PAR=d.par.filter(function(x){return x&&CODE_RX.test(String(x.code||"").toUpperCase())&&x.devis}).map(function(x){return{code:String(x.code).toUpperCase(),devis:String(x.devis),client:String(x.client||"")}});savePar();renderPar()}
-    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;delete d.par;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
+    delete d.stock;delete d.tarifs;delete d.check;delete d.sup;delete d.ent;delete d.par;delete d.entskip;S=d;save();$("dImp").close();render();flash("Sauvegarde restaurée.");
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
 
@@ -602,7 +605,7 @@ function eInfo(it){
 function updateE(){
   var due=ENT.filter(function(x){return eInfo(x).st==="due"});
   var b=$("entAlert");
-  if(due.length){b.hidden=false;b.textContent=due.length+" PC à entretenir : "+due.map(function(x){return x.client}).join(", ")}else{b.hidden=true;b.textContent=""}
+  if(due.length){b.hidden=false;b.textContent=due.length+" PC à entretenir : "+due.map(function(x){return x.client||x.dv}).join(", ")}else{b.hidden=true;b.textContent=""}
   $("tabEnt").textContent="Entretien"+(due.length?" ("+due.length+")":"");
   $("eN").textContent=String(ENT.length);
 }
@@ -621,7 +624,7 @@ function eEditRow(it){
   var no=el("button","ghost","Annuler");no.type="button";
   ok.onclick=function(){
     var name=n.value.trim();if(!name||!o.value){eMsg("Remplis le client et la date de commande.");return}
-    it.client=name;it.dv=dv.value.trim();it.pc=p.value.trim();it.order=o.value;it.last=l.value||"";eEdit=null;saveE();eMsg("");renderEnt();
+    it.client=name;it.dv=dv.value.trim();it.pc=p.value.trim();it.order=o.value;it.last=l.value||"";it.edited=1;eEdit=null;saveE();eMsg("");renderEnt();
   };
   no.onclick=function(){eEdit=null;eMsg("");renderEnt()};
   var act=el("div","eact");act.append(ok,no);li.append(wrap,act);
@@ -644,7 +647,7 @@ function renderEnt(){
     done.onclick=function(){it.last=isoD(todayD());saveE();eMsg("Entretien noté pour "+it.client+". Prochain rappel dans 1 an.");renderEnt()};
     var ed=el("button","ghost edit","Modifier");ed.type="button";ed.onclick=function(){eEdit=it.id;eMsg("");renderEnt()};
     var rm=el("button","ghost","Retirer");rm.type="button";
-    arm(rm,"Confirmer",function(){ENT=ENT.filter(function(x){return x.id!==it.id});saveE();renderEnt()});
+    arm(rm,"Confirmer",function(){ENT=ENT.filter(function(x){return x.id!==it.id});if(it.dv&&SKIP.indexOf(it.dv)<0){SKIP.push(it.dv);saveSkip()}saveE();renderEnt()});
     var act=el("div","eact");act.append(done,ed,rm);
     li.append(c1,c2,act);ul.appendChild(li);
   });
@@ -659,8 +662,38 @@ $("eForm").addEventListener("submit",function(e){
   renderEnt();$("eName").focus();
 });
 $("eDate").value=isoD(todayD());
+
+var MONPC_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRLYTyjh-Nlraye_KopxaL3LM7EkRloiXBVaL67xtwGSfxha_HmkZTjuzrHQrUB8WQEA0w0SLGhKke8/pub?gid=1002&single=true&output=csv";
+var SKIP=[];
+try{var rsk=localStorage.getItem("ggbuild-entskip-v1");SKIP=rsk?JSON.parse(rsk):[]}catch(e){SKIP=[]}
+if(!Array.isArray(SKIP))SKIP=[];
+function saveSkip(){try{localStorage.setItem("ggbuild-entskip-v1",JSON.stringify(SKIP))}catch(e){}}
+function csvP(t){var r=[],row=[],f="",q=false,i,c;for(i=0;i<t.length;i++){c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"')q=true;else if(c==","){row.push(f);f=""}else if(c=="\n"){row.push(f);r.push(row);row=[];f=""}else if(c!="\r")f+=c}if(f||row.length){row.push(f);r.push(row)}return r}
+function nrm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
+function dmy(s){var m=String(s||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[1]).slice(-2):""}
+function syncEnt(manual){
+  fetch(MONPC_URL+"&t="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
+    var rows=csvP(t),hd=rows.shift().map(nrm);
+    var ix=function(k){return hd.findIndex(function(x){return x.indexOf(k)>-1})};
+    var iN=ix("commande"),iT=ix("statut"),iD=ix("remise"),cols=["config","processeur","carte","memoire","stockage"].map(ix);
+    if(iN<0||iT<0)throw 0;
+    var added=0,changed=0;
+    rows.forEach(function(r){
+      if(nrm(r[iT])!=="livre")return;
+      var dv=String(r[iN]||"").trim().toUpperCase();if(!dv||SKIP.indexOf(dv)>-1)return;
+      var date=iD>-1?dmy(r[iD]):"",desc=cols.map(function(i){return i>-1?String(r[i]||"").trim():""}).filter(Boolean).join(" · ");
+      var ex=ENT.filter(function(x){return String(x.dv).toUpperCase()===dv})[0];
+      if(ex){if(ex.auto&&!ex.edited&&date&&ex.order!==date){ex.order=date;changed++}return}
+      ENT.push({id:uid(),client:dv,pc:desc,dv:dv,order:date||isoD(todayD()),last:"",auto:1});added++;
+    });
+    if(added||changed){saveE();renderEnt()}
+    if(manual||added)eMsg(added?added+" PC ajouté"+(added>1?"s":"")+" depuis le Sheet.":"Rien de nouveau.");
+  }).catch(function(){if(manual)eMsg("Impossible de lire le Sheet (hors ligne, ou page ouverte dans Claude).")});
+}
+$("eSync").onclick=function(){syncEnt(true)};
 $("entAlert").onclick=function(){showTab("ent")};
-$("tabEnt").onclick=function(){showTab("ent")};
+$("tabEnt").onclick=function(){showTab("ent");syncEnt(false)};
+syncEnt(false);
 
 var CH=null;
 try{var rc=localStorage.getItem("ggbuild-chrono-v1");CH=rc?JSON.parse(rc):null}catch(e){CH=null}
