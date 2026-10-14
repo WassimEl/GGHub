@@ -158,6 +158,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
     <button type="button" role="tab" id="tabEnt" aria-selected="false" aria-controls="pEnt">Entretien</button>
     <button type="button" role="tab" id="tabPar" aria-selected="false" aria-controls="pPar">Parrainage</button>
     <button type="button" role="tab" id="tabMsg" aria-selected="false" aria-controls="pMsgs">Messages</button>
+    <button type="button" role="tab" id="tabFps" aria-selected="false" aria-controls="pFps">FPS</button>
   </div>
   <div id="pLinks" role="tabpanel" aria-labelledby="tabLinks">
   <main class="grid" id="grid"></main>
@@ -258,6 +259,20 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       <div class="kfoot"><button class="primary" id="mCopy" type="button">Copier le message</button></div>
     </section>
   </div>
+  <div id="pFps" role="tabpanel" aria-labelledby="tabFps" hidden>
+    <section class="cat" aria-labelledby="fTitle">
+      <div class="cat-head"><h2 id="fTitle">FPS estimés</h2></div>
+      <p class="h" style="margin:0 0 8px">Choisis les composants : tu vois une estimation des FPS en Ultra (sans ray tracing). Le portail clients calcule la même chose tout seul pour chaque config.</p>
+      <div class="mrow">
+        <select id="fGpu" aria-label="Carte graphique"><option value="9060xt8">RX 9060 XT 8 Go</option><option value="9060xt16">RX 9060 XT 16 Go</option><option value="9070">RX 9070 16 Go</option></select>
+        <select id="fCpu" aria-label="Processeur"><option value="5500">Ryzen 5 5500</option><option value="5600">Ryzen 5 5600</option><option value="7500f">Ryzen 5 7500F</option><option value="9600x">Ryzen 5 9600X</option></select>
+        <select id="fRam" aria-label="Mémoire"><option value="8">8 Go</option><option value="16" selected>16 Go</option><option value="32">32 Go</option></select>
+      </div>
+      <div id="fOut" role="status" aria-live="polite"></div>
+      <p class="h" style="margin-top:10px">Estimations indicatives à partir de données publiques (référence : RX 9060 XT 8 Go, Ultra, sans ray tracing). Elles varient selon le jeu, les réglages et la version des pilotes.</p>
+      <div class="kfoot"><button class="primary" id="fCopy" type="button">Copier le résultat</button></div>
+    </section>
+  </div>
   <footer>
     <button class="ghost" id="exp">Copier la sauvegarde</button>
     <button class="ghost" id="imp">Restaurer une sauvegarde</button>
@@ -315,6 +330,18 @@ if((S.m||0)<1){
   S.cats.forEach(function(c){c.links.forEach(function(l){if(MAP[l.url])l.url=MAP[l.url];if(/userdiag\.com/i.test(l.url))hasDiag=true})});
   if(!hasDiag){var tgt=S.cats.filter(function(c){return c.id==="c3"})[0]||S.cats[0];if(tgt)tgt.links.push({id:"l9",title:"UserDiag",url:"https://userdiag.com/fr/",icon:"diag",color:"#84cc16"})}
   S.m=1;save();
+}
+if((S.m||0)<2){
+  S.cats.push({id:"c5",name:"Configs prêtes",links:[
+    {id:"cf0",title:"Mes configs PCPartPicker (modifier ou ajouter)",url:"https://be.pcpartpicker.com/user/SnipOps/saved/",icon:"cpu",color:"#0891b2"},
+    {id:"cf1",title:"DDR4 Mid range",url:"https://be.pcpartpicker.com/user/SnipOps/saved/#view=fmWgQ7",icon:"cpu",color:"#0891b2"},
+    {id:"cf2",title:"DDR4 Low range",url:"https://be.pcpartpicker.com/user/SnipOps/saved/#view=DzWgQ7",icon:"cpu",color:"#0e7490"},
+    {id:"cf3",title:"DDR5 Mid range",url:"https://be.pcpartpicker.com/user/SnipOps/saved/#view=Wfk2bv",icon:"cpu",color:"#7c3aed"},
+    {id:"cf4",title:"DDR5 Low range",url:"https://be.pcpartpicker.com/user/SnipOps/saved/#view=vZr4Bm",icon:"cpu",color:"#6d28d9"},
+    {id:"cf5",title:"DDR5 Confo",url:"https://be.pcpartpicker.com/user/SnipOps/saved/#view=NvmXYJ",icon:"cpu",color:"#be185d"},
+    {id:"cf6",title:"Portail clients (choix de config)",url:"https://wassimel.github.io/GGConfigs/",icon:"cube",color:"#8b5cf6"},
+    {id:"cf7",title:"Sheet : onglet Configs",url:"https://docs.google.com/spreadsheets/d/1qgwfGXX7lf6b0BZ9KwDhi4dO3cNovByYOsx2q6fYrBE/edit?gid=1003#gid=1003",icon:"table",color:"#16a34a"}]});
+  S.m=2;save();
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function uid(){return "i"+Math.random().toString(36).slice(2,9)}
@@ -501,10 +528,10 @@ arm($("kDefault"),"Confirmer",function(){
   KI=kDefaults();KCHK={};saveK();renderCheck();
 });
 function showTab(name){
-  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"],par:["pPar","tabPar"],msg:["pMsgs","tabMsg"]};
+  var P={links:["pLinks","tabLinks"],check:["pCheck","tabCheck"],sup:["pSup","tabSup"],ent:["pEnt","tabEnt"],par:["pPar","tabPar"],msg:["pMsgs","tabMsg"],fps:["pFps","tabFps"]};
   Object.keys(P).forEach(function(k){var on=k===name;$(P[k][0]).hidden=!on;$(P[k][1]).setAttribute("aria-selected",String(on))});
   $("bar").hidden=name!=="links";
-  var H={check:"#checklist",sup:"#materiel",ent:"#entretien",par:"#parrainage",msg:"#messages"};
+  var H={check:"#checklist",sup:"#materiel",ent:"#entretien",par:"#parrainage",msg:"#messages",fps:"#fps"};
   try{history.replaceState(null,"",name==="links"?location.pathname+location.search:H[name])}catch(e){}
 }
 $("tabLinks").onclick=function(){showTab("links")};
@@ -512,6 +539,7 @@ $("tabCheck").onclick=function(){showTab("check")};
 $("tabSup").onclick=function(){showTab("sup")};
 $("tabPar").onclick=function(){showTab("par");$("pCode").focus()};
 $("tabMsg").onclick=function(){showTab("msg")};
+$("tabFps").onclick=function(){showTab("fps")};
 var SDEF=["Pâte thermique","Gants","Serre-câbles (colliers)","Alcool isopropylique","Chiffons microfibres et cotons-tiges","Tournevis (cruciforme et embouts)","Pince coupante","Bracelet antistatique","Air comprimé ou souffleur","Vis et entretoises de rechange","Clé USB d'installation Windows","Straps velcro pour les câbles","Lampe","Emballage de protection pour la livraison"];
 function sDefaults(){return SDEF.map(function(t,i){return{id:"m"+(i+1),text:t,st:0}})}
 var SUP=null;
@@ -793,8 +821,29 @@ $("mCopy").onclick=function(){
   else $("mOut").select();
 };
 mFill();
+var FPSM={
+ games:[["Cyberpunk 2077",65,47,0.3],["Call of Duty: Warzone",111,69,0.7],["Fortnite",224,134,1]],
+ gpu:{"9060xt8":100,"9060xt16":108,"9070":120},
+ cpu:{"9600x":1.05,"7500f":1.0,"5600":0.93,"5500":0.88}
+};
+function fpsOf(g,c,ram){
+ const gi=FPSM.gpu[g],cf=FPSM.cpu[c];if(!gi||!cf)return null;
+ const rp=ram&&ram<16?0.85:1;
+ return FPSM.games.map(function(x){const k=gi/100*(1+x[3]*(cf-1))*rp;return{n:x[0],a:Math.round(x[1]*k/5)*5,b:Math.round(x[2]*k/5)*5}});
+}
+function gpuKey(s){s=String(s||"").toLowerCase().replace(/\s/g,"");if(/9070/.test(s))return"9070";if(/9060xt/.test(s))return/16/.test(s)?"9060xt16":"9060xt8";return""}
+function cpuKey(s){const m=String(s||"").toLowerCase().match(/9600x|7500f|5600|5500/);return m?m[0]:""}
+
+function fRender(){
+ var f=fpsOf($("fGpu").value,$("fCpu").value,+$("fRam").value),o=$("fOut");o.textContent="";
+ f.forEach(function(x){var d=el("div","pres");d.append(el("b",null,x.n),el("span","dv","~"+x.a+" FPS en 1080p"),el("span","h","~"+x.b+" FPS en 1440p"));o.appendChild(d)});
+ $("fCopy").dataset.t="FPS estimés (Ultra) : "+f.map(function(x){return x.n+" ~"+x.a+" (1080p) / ~"+x.b+" (1440p)"}).join(" ; ");
+}
+["fGpu","fCpu","fRam"].forEach(function(id){$(id).addEventListener("change",fRender)});
+$("fCopy").onclick=function(){var b=$("fCopy"),t=b.dataset.t||"";if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){b.textContent="Copié";setTimeout(function(){b.textContent="Copier le résultat"},1500)},function(){})};
+fRender();
 render();renderStock();renderTarifs();renderCheck();renderSup();renderEnt();renderPar();paintC();
-if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");else if(location.hash==="#parrainage")showTab("par");else if(location.hash==="#messages")showTab("msg");
+if(location.hash==="#checklist")showTab("check");else if(location.hash==="#materiel")showTab("sup");else if(location.hash==="#entretien")showTab("ent");else if(location.hash==="#parrainage")showTab("par");else if(location.hash==="#messages")showTab("msg");else if(location.hash==="#fps")showTab("fps");
 })();
 </script>
 </body>
