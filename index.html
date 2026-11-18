@@ -142,6 +142,10 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
 @media (max-width:560px){.tform{grid-template-columns:1fr 1fr}.tform #tName,.tform button{grid-column:1/-1}}
 .tarifs td .pr{color:var(--muted);font-weight:500}
 .tarifs td input[type=number]+input{margin-left:4px}
+.tform{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;margin:6px 0 10px}
+@media (max-width:560px){.tform{grid-template-columns:1fr 1fr}.tform #tName,.tform button{grid-column:1/-1}}
+.tarifs td .pr{color:var(--muted);font-weight:500}
+.tarifs td input[type=number]+input{margin-left:4px}
 </style>
 </head>
 <body>
@@ -170,6 +174,12 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   <section class="cat tarifs" aria-labelledby="tTitle">
     <div class="cat-head"><h2 id="tTitle">Tarifs</h2><button class="ghost" id="tReset" type="button">Prix par défaut</button></div>
     <div class="sundo" id="tMsg" role="status"></div>
+  <form id="tForm" class="tform">
+    <input id="tName" placeholder="Prestation" aria-label="Nouvelle prestation" required maxlength="80">
+    <input id="tPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Prix (€)" aria-label="Prix en euros" required>
+    <input id="tPromo" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Réduc. (€), optionnel" aria-label="Prix réduit, optionnel">
+    <button class="primary" type="submit">Ajouter</button>
+  </form>
   <form id="tForm" class="tform">
     <input id="tName" placeholder="Prestation" aria-label="Nouvelle prestation" required maxlength="80">
     <input id="tPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Prix (€)" aria-label="Prix en euros" required>
@@ -289,7 +299,7 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
     <button class="ghost" id="exp">Copier la sauvegarde</button>
     <button class="ghost" id="imp">Restaurer une sauvegarde</button>
     <span class="msg" id="msg" role="status"></span>
-  </footer>
+  <div id="ver" class="h" style="width:100%">Version 2 · 18/11/2026</div></footer>
 </div>
 
 <dialog id="dLink"><form method="dialog" id="fLink" onsubmit="return false">
@@ -670,6 +680,7 @@ function renderEnt(){
     var f=eInfo(it),li=el("li","erow");
     var c1=el("div","ec");c1.append(el("b",null,it.client),el("span","h",it.pc||"PC non précisé"));
     if(it.dv){var dl=el("span","h","Devis n° "+it.dv+" ");var cp=el("button","ghost edit","Copier");cp.type="button";cp.setAttribute("aria-label","Copier le numéro de devis "+it.dv);cp.onclick=function(){copyTxt(it.dv)};dl.appendChild(cp);c1.appendChild(dl)}
+    if(it.auto&&!it.edited)c1.appendChild(el("span","h","Client à renseigner : clique sur Modifier"));
     if(it.auto&&!it.edited)c1.appendChild(el("span","h","Client à renseigner : clique sur Modifier"));
     var c2=el("div","ec");
     var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?f.mb+" mois écoulés":"À jour");
