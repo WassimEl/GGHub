@@ -138,6 +138,10 @@ textarea{width:100%;min-height:120px;background:var(--bg);border:1px solid var(-
 footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-size:.88rem}
 .msg{margin-left:auto}
 @media (prefers-reduced-motion:no-preference){button{transition:background .15s,color .15s}}
+.tform{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;margin:6px 0 10px}
+@media (max-width:560px){.tform{grid-template-columns:1fr 1fr}.tform #tName,.tform button{grid-column:1/-1}}
+.tarifs td .pr{color:var(--muted);font-weight:500}
+.tarifs td input[type=number]+input{margin-left:4px}
 </style>
 </head>
 <body>
@@ -166,6 +170,12 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
   <section class="cat tarifs" aria-labelledby="tTitle">
     <div class="cat-head"><h2 id="tTitle">Tarifs</h2><button class="ghost" id="tReset" type="button">Prix par défaut</button></div>
     <div class="sundo" id="tMsg" role="status"></div>
+  <form id="tForm" class="tform">
+    <input id="tName" placeholder="Prestation" aria-label="Nouvelle prestation" required maxlength="80">
+    <input id="tPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Prix (€)" aria-label="Prix en euros" required>
+    <input id="tPromo" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Réduc. (€), optionnel" aria-label="Prix réduit, optionnel">
+    <button class="primary" type="submit">Ajouter</button>
+  </form>
     <div class="twrap"><table>
       <thead><tr><th scope="col">Prestation</th><th scope="col">Prix</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
       <tbody id="tBody"></tbody>
@@ -215,8 +225,8 @@ footer{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;co
       <p class="h" style="margin:0 0 8px">Les PC passés en « Livré » dans le Sheet s'ajoutent ici tout seuls (client = n° de devis, à renommer avec Modifier). Tout reste modifiable à la main.</p>
       <div class="kfoot" style="margin:0 0 10px"><button class="ghost" id="eSync" type="button">Actualiser depuis le Sheet</button></div>
       <form id="eForm" class="eform">
-        <input id="eName" placeholder="Client" aria-label="Nom du client" maxlength="60" required>
-        <input id="eDevis" placeholder="N° de devis" aria-label="Numéro de devis" maxlength="30">
+        <input id="eName" placeholder="Client (à qui est le PC)" aria-label="Nom du client" maxlength="60" required>
+        <input id="eDevis" placeholder="Devis (n° ou nom)" aria-label="Devis" maxlength="60">
         <input id="ePc" placeholder="PC (ex. gaming RTX 5060)" aria-label="PC" maxlength="80">
         <input id="eDate" type="date" aria-label="Date de commande" required>
         <button class="primary" type="submit">Ajouter</button>
@@ -444,7 +454,7 @@ $("iOk").onclick=function(){
   try{var d=JSON.parse($("impTxt").value);if(!d||!Array.isArray(d.cats))throw 0;
     d.cats.forEach(function(c){c.id=c.id||uid();c.name=String(c.name||"Sans nom");c.links=(c.links||[]).filter(function(l){return l&&safe(String(l.url))}).map(function(l){return{id:l.id||uid(),title:String(l.title||""),url:String(l.url),icon:ICONS[l.icon]?l.icon:"auto",color:HEX.test(l.color||"")?l.color:""}})});
     if(Array.isArray(d.stock)){STK=d.stock.filter(function(x){return x&&x.name&&isFinite(x.price)&&isFinite(x.qty)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price,qty:Math.max(0,Math.floor(+x.qty))}});saveS();renderStock()}
-    if(Array.isArray(d.tarifs)&&d.tarifs.length){TAR=d.tarifs.filter(function(x){return x&&x.name&&isFinite(x.price)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price}});if(!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));saveT();renderTarifs()}
+    if(Array.isArray(d.tarifs)&&d.tarifs.length){TAR=d.tarifs.filter(function(x){return x&&x.name&&isFinite(x.price)}).map(function(x){return{id:x.id||uid(),name:String(x.name),price:+x.price,promo:(x.promo!=null&&x.promo!==""&&isFinite(x.promo))?+x.promo:null}});if(!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));saveT();renderTarifs()}
     if(Array.isArray(d.check)&&d.check.length){KI=d.check.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text)}});if(!KI.length)KI=kDefaults();saveK();KCHK={};renderCheck()}
     if(Array.isArray(d.sup)&&d.sup.length){SUP=d.sup.filter(function(x){return x&&x.text}).map(function(x){return{id:x.id||uid(),text:String(x.text),st:(x.st===1||x.st===2)?x.st:0}});if(!SUP.length)SUP=sDefaults();saveM();renderSup()}
     if(Array.isArray(d.ent)){var rx=/^\d{4}-\d{2}-\d{2}$/;ENT=d.ent.filter(function(x){return x&&x.client&&rx.test(String(x.order))}).map(function(x){return{id:x.id||uid(),client:String(x.client),pc:String(x.pc||""),dv:String(x.dv||""),order:String(x.order),last:rx.test(String(x.last||""))?String(x.last):""}});saveE();renderEnt()}
@@ -454,14 +464,23 @@ $("iOk").onclick=function(){
   }catch(e){flash("Texte de sauvegarde invalide.")}
 };
 
-var TDEF=[{id:"t1",name:"Montage",price:70},{id:"t2",name:"Nettoyage (pâte thermique & poussière)",price:40},{id:"t3",name:"Nettoyage + Recâblage",price:75},{id:"t4",name:"Dépannage",price:15}];
+var TDEF=[{id:"t1",name:"Montage",price:70,promo:null},{id:"t2",name:"Nettoyage (pâte thermique & poussière)",price:50,promo:40},{id:"t3",name:"Nettoyage + Recâblage",price:75,promo:null},{id:"t4",name:"Dépannage",price:15,promo:null},{id:"t5",name:"Nettoyage PS5",price:40,promo:30}];
 var TAR=null;
 try{var rt=localStorage.getItem("ggbuild-tarifs-v1");TAR=rt?JSON.parse(rt):null}catch(e){TAR=null}
 if(!Array.isArray(TAR)||!TAR.length)TAR=JSON.parse(JSON.stringify(TDEF));
+try{
+  if(localStorage.getItem("ggbuild-tarifs-m")!=="2"){
+    TAR.forEach(function(r){if(r.id==="t2"&&r.price===40&&r.promo==null){r.price=50;r.promo=40}});
+    if(!TAR.some(function(r){return /ps5/i.test(r.name)}))TAR.push({id:"t5",name:"Nettoyage PS5",price:40,promo:30});
+    localStorage.setItem("ggbuild-tarifs-m","2");
+    localStorage.setItem("ggbuild-tarifs-v1",JSON.stringify(TAR));
+  }
+}catch(e){}
 function saveT(){try{localStorage.setItem("ggbuild-tarifs-v1",JSON.stringify(TAR))}catch(e){}}
 var tEdit=null;
 var eur0=new Intl.NumberFormat("fr-BE",{style:"currency",currency:"EUR",minimumFractionDigits:0,maximumFractionDigits:2});
 function tMsg(t){$("tMsg").textContent=t||""}
+function parsePromo(v){v=String(v==null?"":v).trim().replace(",",".");if(v==="")return null;var n=parseFloat(v);return isNaN(n)||n<0?undefined:n}
 function renderTarifs(){
   var tb=$("tBody");tb.textContent="";
   TAR.forEach(function(r){
@@ -469,25 +488,37 @@ function renderTarifs(){
     if(tEdit===r.id){
       var n=el("input");n.value=r.name;n.maxLength=80;n.setAttribute("aria-label","Prestation");
       var p=el("input");p.type="number";p.min="0";p.step="0.01";p.value=String(r.price);p.setAttribute("aria-label","Prix en euros");
+      var q=el("input");q.type="number";q.min="0";q.step="0.01";q.value=r.promo==null?"":String(r.promo);q.placeholder="(réduc.)";q.setAttribute("aria-label","Prix réduit entre parenthèses, optionnel");
       var commit=function(){
-        var name=n.value.trim(),price=parseFloat(String(p.value).replace(",","."));
-        if(!name||isNaN(price)||price<0){tMsg("Remplis la prestation et un prix valide.");return}
-        r.name=name;r.price=price;tEdit=null;saveT();tMsg("");renderTarifs();
+        var name=n.value.trim(),price=parseFloat(String(p.value).replace(",",".")),promo=parsePromo(q.value);
+        if(!name||isNaN(price)||price<0||promo===undefined){tMsg("Remplis la prestation et des prix valides.");return}
+        r.name=name;r.price=price;r.promo=promo;tEdit=null;saveT();tMsg("");renderTarifs();
       };
       var cancel=function(){tEdit=null;tMsg("");renderTarifs()};
-      [n,p].forEach(function(x){x.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();commit()}else if(e.key==="Escape"){cancel()}})});
+      [n,p,q].forEach(function(x){x.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();commit()}else if(e.key==="Escape"){cancel()}})});
       var ok=el("button","primary","Enregistrer");ok.type="button";ok.onclick=commit;
       var no=el("button","ghost","Annuler");no.type="button";no.onclick=cancel;
-      c1.appendChild(n);c2.appendChild(p);c3.append(ok,no);
+      c1.appendChild(n);c2.append(p,q);c3.append(ok,no);
       setTimeout(function(){p.focus();p.select()},0);
     }else{
       c1.textContent=r.name;c2.textContent=eur0.format(r.price);
+      if(r.promo!=null)c2.appendChild(el("span","pr"," ("+eur0.format(r.promo)+")"));
       var b=el("button","ghost edit","Modifier");b.type="button";b.setAttribute("aria-label","Modifier "+r.name);
-      b.onclick=function(){tEdit=r.id;tMsg("");renderTarifs()};c3.appendChild(b);
+      b.onclick=function(){tEdit=r.id;tMsg("");renderTarifs()};
+      var x=el("button","ghost danger","Supprimer");x.type="button";x.setAttribute("aria-label","Supprimer "+r.name);
+      arm(x,"Confirmer",function(){TAR=TAR.filter(function(y){return y.id!==r.id});saveT();renderTarifs()});
+      c3.append(b,x);
     }
     tr.append(c1,c2,c3);tb.appendChild(tr);
   });
 }
+$("tForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  var name=$("tName").value.trim(),price=parseFloat(String($("tPrice").value).replace(",",".")),promo=parsePromo($("tPromo").value);
+  if(!name||isNaN(price)||price<0||promo===undefined){tMsg("Remplis la prestation et des prix valides.");return}
+  TAR.push({id:uid(),name:name,price:price,promo:promo});saveT();tMsg("");
+  $("tName").value="";$("tPrice").value="";$("tPromo").value="";renderTarifs();$("tName").focus();
+});
 arm($("tReset"),"Confirmer",function(){
   var b=$("tReset");delete b.dataset.armed;b.classList.remove("armed");b.textContent="Prix par défaut";
   TAR=JSON.parse(JSON.stringify(TDEF));tEdit=null;saveT();tMsg("");renderTarifs();
@@ -616,10 +647,10 @@ function eEditRow(it){
   var li=el("li","erow eedit");
   var mk=function(type,val,label){var i=el("input");i.type=type;i.value=val||"";i.setAttribute("aria-label",label);return i};
   var n=mk("text",it.client,"Client"),p=mk("text",it.pc,"PC"),o=mk("date",it.order,"Date de commande"),l=mk("date",it.last,"Date du dernier entretien"),dv=mk("text",it.dv,"Numéro de devis");
-  n.maxLength=60;p.maxLength=80;dv.maxLength=30;
+  n.maxLength=60;p.maxLength=80;dv.maxLength=60;
   var lab=function(t,x){var d=el("div","fl");d.append(el("span","h",t),x);return d};
   var wrap=el("div","egrid");
-  wrap.append(lab("Client",n),lab("N° de devis",dv),lab("PC",p),lab("Date de commande",o),lab("Dernier entretien (vide = jamais)",l));
+  wrap.append(lab("Client (à qui est le PC)",n),lab("Devis (n° ou nom)",dv),lab("PC",p),lab("Date de commande",o),lab("Dernier entretien (vide = jamais)",l));
   var ok=el("button","primary","Enregistrer");ok.type="button";
   var no=el("button","ghost","Annuler");no.type="button";
   ok.onclick=function(){
@@ -639,6 +670,7 @@ function renderEnt(){
     var f=eInfo(it),li=el("li","erow");
     var c1=el("div","ec");c1.append(el("b",null,it.client),el("span","h",it.pc||"PC non précisé"));
     if(it.dv){var dl=el("span","h","Devis n° "+it.dv+" ");var cp=el("button","ghost edit","Copier");cp.type="button";cp.setAttribute("aria-label","Copier le numéro de devis "+it.dv);cp.onclick=function(){copyTxt(it.dv)};dl.appendChild(cp);c1.appendChild(dl)}
+    if(it.auto&&!it.edited)c1.appendChild(el("span","h","Client à renseigner : clique sur Modifier"));
     var c2=el("div","ec");
     var label=f.st==="due"?(f.days<0?"À prévenir (dépassé de "+(-f.days)+" j)":"À prévenir aujourd'hui"):(f.st==="soon"?f.mb+" mois écoulés":"À jour");
     var badge=el("span","eb "+f.st,label);
